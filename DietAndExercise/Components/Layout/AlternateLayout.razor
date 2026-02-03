@@ -1,0 +1,8 @@
+﻿@using System.Reflection
+
+@inherits LayoutComponentBase
+
+<BitLayout>
+    <Main><div class="content">@Body</div></Main>
+    <Footer><div>&copy; CJC @(DateTime.Now.ToString("yyyy")) - v@(Assembly.GetExecutingAssembly().GetName().Version)</div></Footer>
+</BitLayout>
