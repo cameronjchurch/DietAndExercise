@@ -11,6 +11,7 @@
     <PackageReference Include="Bit.BlazorUI" Version="10.4.0" />
     <PackageReference Include="Bit.BlazorUI.Extras" Version="10.4.0" />
     <PackageReference Include="Bit.BlazorUI.Icons" Version="10.4.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 
 </Project>

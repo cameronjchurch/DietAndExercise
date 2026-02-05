@@ -101,6 +101,6 @@ public class DietAndExerciseService(IConfiguration configuration) : IDietAndExer
             }
         }
 
-        return records;
+        return [.. records.OrderBy(r => r.Date)];
     }
 }
