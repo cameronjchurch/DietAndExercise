@@ -5,7 +5,7 @@
 
 @inject DietAndExercise.Services.IDietAndExerciseService DietAndExerciseService
 
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @layout AlternateLayout
 
@@ -24,29 +24,62 @@ else
     <div class="record-list" style="display:flex;flex-direction:column;align-items:center;padding:1rem;">
         @foreach (var record in dayRecords)
         {
-            <BitCard style="width:650px;min-width:650px;max-width:650px;margin-bottom:1rem;box-sizing:border-box;">
-                <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;">
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Date</strong>
-                        <span>: @record.Date</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>WeightLb</strong>
-                        <span>: @record.WeightLb</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Food</strong>
-                        <span>: @record.FoodIntakeNotes</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Exercise</strong>
-                        <span>: @record.ExerciseNotes</span>
-                    </div>
+            string recordTitle = record.Date.ToString();
+            <BitAccordion Title="@recordTitle"
+                          IsExpanded="@selectedDay.Equals(recordTitle, StringComparison.OrdinalIgnoreCase)"
+                          OnClick="@(() => SetSelected(recordTitle))">
+                <div class="accordion-card-wrapper">
+                    <BitCard class="responsive-card">
+                        <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;">
+                            <div style="margin-bottom:0.5rem;">
+                                <strong>Date</strong>
+                                <span>: @record.Date</span>
+                            </div>
+                            <div style="margin-bottom:0.5rem;">
+                                <strong>WeightLb</strong>
+                                <span>: @record.WeightLb</span>
+                            </div>
+                            <div style="margin-bottom:0.5rem;">
+                                <strong>Food</strong>
+                                <span>: @record.FoodIntakeNotes</span>
+                            </div>
+                            <div style="margin-bottom:0.5rem;">
+                                <strong>Exercise</strong>
+                                <span>: @record.ExerciseNotes</span>
+                            </div>
+                        </div>
+                    </BitCard>
                 </div>
-            </BitCard>
+            </BitAccordion>
         }
     </div>
 }
+
+<style>
+    /* Default desktop/regular browser size */
+    .responsive-card {
+        width: 750px;
+        min-width: 750px;
+        max-width: 750px;
+        margin: 0 auto 1rem;
+        box-sizing: border-box;
+    }
+
+    .accordion-card-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    @@media only screen and (max-width: 600px) {
+        .responsive-card {
+            width: 450px;
+            min-width: 450px;
+            max-width: 450px;
+        }
+    }
+</style>
 
 @code {
     IEnumerable<DayRecord> dayRecords = System.Array.Empty<DayRecord>();
@@ -55,6 +88,7 @@ else
     double average;
     private BitChart _chart = default!;
     private BitChartLineConfig _config = default!;
+    string selectedDay = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -67,6 +101,18 @@ else
         var weights = dayRecords.Select(d => d.WeightLb);
 
         InitializeChart(days, weights);
+    }
+
+    void SetSelected(string day)
+    {
+        if (selectedDay == day)
+        {
+            selectedDay = string.Empty;
+        }
+        else
+        {
+            selectedDay = day;
+        }
     }
 
     private void InitializeChart(IEnumerable<string> labels, IEnumerable<double> data)
