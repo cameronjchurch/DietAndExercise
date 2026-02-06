@@ -21,36 +21,43 @@ else
         <div>Max: @max</div><div>Min: @min</div><div>Avg: @average</div>
     </BitStack>
     <BitChart Config="_config" @ref="_chart" />
+
     <div class="record-list" style="display:flex;flex-direction:column;align-items:center;padding:1rem;">
-        @foreach (var record in dayRecords)
+        <label for="recordSelect" style="font-weight:600;margin-bottom:0.25rem;">Select Date</label>
+        <select id="recordSelect" @bind="selectedDay" style="padding:0.5rem;margin-bottom:1rem;min-width:300px;">
+            <option value="">-- Select a date --</option>
+            @foreach (var record in dayRecords)
+            {
+                <option value="@record.Date.ToString()">@record.Date</option>
+            }
+        </select>
+
+        @if (SelectedRecord == null)
         {
-            string recordTitle = record.Date.ToString();
-            <BitAccordion Title="@recordTitle"
-                          IsExpanded="@selectedDay.Equals(recordTitle, StringComparison.OrdinalIgnoreCase)"
-                          OnClick="@(() => SetSelected(recordTitle))">
-                <div class="accordion-card-wrapper">
-                    <BitCard class="responsive-card">
-                        <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;">
-                            <div style="margin-bottom:0.5rem;">
-                                <strong>Date</strong>
-                                <span>: @record.Date</span>
-                            </div>
-                            <div style="margin-bottom:0.5rem;">
-                                <strong>WeightLb</strong>
-                                <span>: @record.WeightLb</span>
-                            </div>
-                            <div style="margin-bottom:0.5rem;">
-                                <strong>Food</strong>
-                                <span>: @record.FoodIntakeNotes</span>
-                            </div>
-                            <div style="margin-bottom:0.5rem;">
-                                <strong>Exercise</strong>
-                                <span>: @record.ExerciseNotes</span>
-                            </div>
-                        </div>
-                    </BitCard>
+            <p>No record selected.</p>
+        }
+        else
+        {
+            <BitCard class="responsive-card">
+                <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;">
+                    <div style="margin-bottom:0.5rem;">
+                        <strong>Date</strong>
+                        <span>: @SelectedRecord.Date</span>
+                    </div>
+                    <div style="margin-bottom:0.5rem;">
+                        <strong>WeightLb</strong>
+                        <span>: @SelectedRecord.WeightLb</span>
+                    </div>
+                    <div style="margin-bottom:0.5rem;">
+                        <strong>Food</strong>
+                        <span>: @SelectedRecord.FoodIntakeNotes</span>
+                    </div>
+                    <div style="margin-bottom:0.5rem;">
+                        <strong>Exercise</strong>
+                        <span>: @SelectedRecord.ExerciseNotes</span>
+                    </div>
                 </div>
-            </BitAccordion>
+            </BitCard>
         }
     </div>
 }
@@ -65,18 +72,13 @@ else
         box-sizing: border-box;
     }
 
-    .accordion-card-wrapper {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
     @@media only screen and (max-width: 600px) {
         .responsive-card {
-            width: 450px;
-            min-width: 450px;
-            max-width: 450px;
+            width: 400px;
+            min-width: 400px;
+            max-width: 400px;
+            margin: 0 auto 1rem;
+            box-sizing: border-box;
         }
     }
 </style>
@@ -93,6 +95,11 @@ else
     protected override void OnInitialized()
     {
         dayRecords = DietAndExerciseService.GetHistory();
+        if (dayRecords == null || !dayRecords.Any())
+        {
+            return;
+        }
+
         max = dayRecords.Max(dr => dr.WeightLb);
         min = dayRecords.Min(dr => dr.WeightLb);
         average = Math.Round(dayRecords.Average(dr => dr.WeightLb), 1);
@@ -100,20 +107,10 @@ else
         var days = dayRecords.Select(d => d.Date.ToString());
         var weights = dayRecords.Select(d => d.WeightLb);
 
-        InitializeChart(days, weights);
+        InitializeChart(days, weights);        
     }
 
-    void SetSelected(string day)
-    {
-        if (selectedDay == day)
-        {
-            selectedDay = string.Empty;
-        }
-        else
-        {
-            selectedDay = day;
-        }
-    }
+    private DayRecord? SelectedRecord => dayRecords.FirstOrDefault(r => r.Date.ToString().Equals(selectedDay, StringComparison.OrdinalIgnoreCase));
 
     private void InitializeChart(IEnumerable<string> labels, IEnumerable<double> data)
     {
