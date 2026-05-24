@@ -26,7 +26,7 @@ else
         <label for="recordSelect" style="font-weight:600;margin-bottom:0.25rem;">Select Date</label>
         <select id="recordSelect" @bind="selectedDay" style="padding:0.5rem;margin-bottom:1rem;min-width:300px;">
             <option value="">-- Select a date --</option>
-            @foreach (var record in dayRecords)
+            @foreach (var record in dayRecords.OrderByDescending(r => r.Date))
             {
                 <option value="@record.Date.ToString()">@record.Date</option>
             }
