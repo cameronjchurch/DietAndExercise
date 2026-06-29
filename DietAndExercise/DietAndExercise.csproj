@@ -5,12 +5,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <Version>1.0.1.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Bit.BlazorUI" Version="10.4.4" />
-    <PackageReference Include="Bit.BlazorUI.Extras" Version="10.4.4" />
-    <PackageReference Include="Bit.BlazorUI.Icons" Version="10.4.4" />
+    <PackageReference Include="Bit.BlazorUI" Version="10.4.5" />
+    <PackageReference Include="Bit.BlazorUI.Extras" Version="10.4.5" />
+    <PackageReference Include="Bit.BlazorUI.Icons" Version="10.4.5" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 

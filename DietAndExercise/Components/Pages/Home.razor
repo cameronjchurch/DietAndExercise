@@ -1,7 +1,6 @@
 ﻿@page "/"
 
 @using DietAndExercise.Models
-@using System.Collections.ObjectModel
 
 @inject DietAndExercise.Services.IDietAndExerciseService DietAndExerciseService
 
@@ -60,6 +59,10 @@ else
             </BitCard>
         }
     </div>
+
+    <BitStack Alignment="BitAlignment.Center" Horizontal="true">
+        <BitButton OnClick="ShowWeeklyData">Weekly</BitButton>
+    </BitStack>
 }
 
 <style>
@@ -103,17 +106,16 @@ else
         max = dayRecords.Max(dr => dr.WeightLb);
         min = dayRecords.Min(dr => dr.WeightLb);
         average = Math.Round(dayRecords.Average(dr => dr.WeightLb), 1);
-
-        var days = dayRecords.Select(d => d.Date.ToString());
-        var weights = dayRecords.Select(d => d.WeightLb);
-
-        InitializeChart(days, weights);        
+        
+        InitializeChart(dayRecords);        
     }
 
     private DayRecord? SelectedRecord => dayRecords.FirstOrDefault(r => r.Date.ToString().Equals(selectedDay, StringComparison.OrdinalIgnoreCase));
 
-    private void InitializeChart(IEnumerable<string> labels, IEnumerable<double> data)
+    private void InitializeChart(IEnumerable<DayRecord> records)
     {
+        IEnumerable<string> labels = records.Select(d => d.Date.ToString());
+        IEnumerable<double> data = records.Select(d => d.WeightLb);
         _config = new BitChartLineConfig
         {
             Options = new BitChartLineOptions
@@ -178,5 +180,11 @@ else
 
         _config.Data.Labels.AddRange(labels);
         _config.Data.Datasets.Add(dataset);
+    }
+
+    private void ShowWeeklyData()
+    {
+        dayRecords = dayRecords.Where(d => d.Date.DayOfWeek == DayOfWeek.Monday).ToList();
+        InitializeChart(dayRecords);
     }
 }
