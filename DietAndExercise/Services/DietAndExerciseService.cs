@@ -103,4 +103,22 @@ public class DietAndExerciseService(IConfiguration configuration) : IDietAndExer
 
         return [.. records.OrderBy(r => r.Date)];
     }
+
+    public DayRecord? GetByDate(DateOnly date)
+    {
+        return GetHistory().FirstOrDefault(r => r.Date == date);
+    }
+
+    public void AddOrUpdateDayRecord(DayRecord record)
+    {
+        // File-backed service does not support programmatic updates from here.
+        // Provide a no-op implementation so the service can compile and be used in DI scenarios.
+        throw new NotSupportedException("AddOrUpdateDayRecord is not supported for the file-backed DietAndExerciseService.");
+    }
+
+    public void DeleteDayRecord(DateOnly date)
+    {
+        // File-backed delete not supported in this implementation.
+        throw new NotSupportedException("DeleteDayRecord is not supported for the file-backed DietAndExerciseService.");
+    }
 }
