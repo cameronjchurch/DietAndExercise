@@ -4,15 +4,15 @@ Usage: run interactively in PowerShell on a trusted admin machine that can reach
 This script only prepares and executes SQL via psql; it does NOT store credentials.
 #>
 param(
-    [string]$Host = '12.10.83.6',
+    [string]$PgHost = '12.10.83.6',
     [int]$Port = 5432,
     [string]$AdminUser = 'postgres',
     [string]$NewDb = 'diet_and_exercise',
     [string]$NewUser = 'diet_and_exercise_user'
 )
 
-Write-Host "This script will create database '$NewDb' and role '$NewUser' on $Host:$Port (idempotent)."
-$adminSecure = Read-Host -Prompt "Postgres admin password for $AdminUser@$Host" -AsSecureString
+Write-Host "This script will create database '$NewDb' and role '$NewUser' on $($PgHost):$Port (idempotent)."
+$adminSecure = Read-Host -Prompt "Postgres admin password for $AdminUser@$PgHost" -AsSecureString
 $newUserSecure = Read-Host -Prompt "Password to set for new DB user '$NewUser' (will be stored only in memory)" -AsSecureString
 
 $ptr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($adminSecure)
@@ -46,9 +46,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE $NewUser IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $NewUser;
 "@
 
-    Write-Host "Running psql against $Host (you will be prompted if psql requires password)."
+    Write-Host "Running psql against $PgHost (you will be prompted if psql requires password)."
     $psqlArgs = @(
-        "-h", $Host,
+        "-h", $PgHost,
         "-p", $Port.ToString(),
         "-U", $AdminUser,
         "-d", "postgres",
