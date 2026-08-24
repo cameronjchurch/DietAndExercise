@@ -2,6 +2,7 @@
 
 @using DietAndExercise.Models
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
 
 @inject DietAndExercise.Services.IDietAndExerciseService DietAndExerciseService
 
@@ -43,8 +44,7 @@ else
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Weight (lb)</label>
-                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />
-                    <div style="margin-top:0.25rem;color:var(--bit-color-neutralSecondary);font-size:0.9rem;">Current: @editModel.WeightLb.ToString("F1")</div>
+                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />                    
                 </div>
 
                 <div>
@@ -59,7 +59,6 @@ else
 
                 <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;">
                     <BitButton OnClick="SaveRecord" IsEnabled="@(CanWrite)">Save</BitButton>
-                    <BitButton OnClick="CancelEdit">Cancel</BitButton>
                     @if (!isNew)
                     {
                         <BitButton OnClick="DeleteRecord" IsEnabled="@(CanWrite)">Delete</BitButton>
@@ -123,6 +122,22 @@ else
         }
     }
 
+    // Editor state
+    private bool isNew = false;
+    private EditableDay editModel = new EditableDay();
+
+    private bool CanWrite => DietAndExerciseService is DietAndExercise.Services.EfDietAndExerciseService;
+
+    private class EditableDay
+    {
+        public string Date { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
+        public double WeightLb { get; set; }
+        public int CaloriesConsumed { get; set; }
+        public int CaloriesBurned { get; set; }
+        public string FoodIntakeNotes { get; set; } = string.Empty;
+        public string ExerciseNotes { get; set; } = string.Empty;
+    }
+
     protected override void OnInitialized()
     {
         dayRecords = DietAndExerciseService.GetHistory();
@@ -151,24 +166,6 @@ else
             }
             return null;
         }
-    }
-
-    // Editor state
-    private bool showEditor = false; // retained for compatibility with other flows
-    private bool isNew = false;
-    private EditableDay editModel = new EditableDay();
-
-
-    private bool CanWrite => DietAndExerciseService is DietAndExercise.Services.EfDietAndExerciseService;
-
-    private class EditableDay
-    {
-        public string Date { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
-        public double WeightLb { get; set; }
-        public int CaloriesConsumed { get; set; }
-        public int CaloriesBurned { get; set; }
-        public string FoodIntakeNotes { get; set; } = string.Empty;
-        public string ExerciseNotes { get; set; } = string.Empty;
     }
 
     private void OnSelectedDayChanged()
@@ -212,49 +209,6 @@ else
         }
     }
 
-    private void NewDay()
-    {
-        isNew = true;
-        showEditor = true;
-        editModel = new EditableDay();
-        // ensure edit model date defaults to today for new records
-        editModel.Date = DateTime.Now.ToString("yyyy-MM-dd");
-        if (!CanWrite)
-        {
-            // If edits not supported, show message and don't open editor
-            showEditor = false;
-        }
-    }
-
-    private void EditSelected()
-    {
-        if (SelectedRecord == null) return;
-        if (!CanWrite)
-        {
-            // cannot edit in markdown mode
-            return;
-        }
-        isNew = false;
-        showEditor = true;
-        editModel = new EditableDay
-        {
-            Date = SelectedRecord.Date.ToString("yyyy-MM-dd"),
-            WeightLb = SelectedRecord.WeightLb,
-            CaloriesConsumed = SelectedRecord.CaloriesConsumed,
-            CaloriesBurned = SelectedRecord.CaloriesBurned,
-            FoodIntakeNotes = SelectedRecord.FoodIntakeNotes,
-            ExerciseNotes = SelectedRecord.ExerciseNotes
-        };
-        // ensure selectedDay reflects this record
-        selectedDay = SelectedRecord.Date.ToString("yyyy-MM-dd");
-    }
-
-    private void CancelEdit()
-    {
-        // Reset editable model to the currently selected record (or new template)
-        OnSelectedDayChanged();
-    }
-
     private void SaveRecord()
     {
         // Parse date from editModel
@@ -272,23 +226,31 @@ else
             FoodIntakeNotes = editModel.FoodIntakeNotes,
             ExerciseNotes = editModel.ExerciseNotes
         };
-
         if (!CanWrite)
         {
             // Guard: do not attempt writes when service is read-only
             // Show a client-side notification instead (could be improved to use a modal/snackbar)
             Console.WriteLine("AddOrUpdate not supported in markdown mode");
-            showEditor = false;
             return;
         }
 
+        // Capture previous weight for this date so we can decide whether to refresh the chart after save
+        var existing = dayRecords.FirstOrDefault(r => r.Date == parsedDate);
+        double? previousWeight = existing?.WeightLb;
+
         DietAndExerciseService.AddOrUpdateDayRecord(record);
 
-        // Refresh
+        // Refresh records from service
         dayRecords = DietAndExerciseService.GetHistory();
-        InitializeChart(dayRecords);
+
+        // Refresh chart only if the weight changed (or this is a new record)
+        bool weightChanged = previousWeight == null || Math.Abs(previousWeight.Value - record.WeightLb) > 0.0001;
+        if (weightChanged)
+        {
+            InitializeChart(dayRecords);
+        }
+
         selectedDay = editModel.Date.ToString();
-        showEditor = false;
     }
 
     private void DeleteRecord()
