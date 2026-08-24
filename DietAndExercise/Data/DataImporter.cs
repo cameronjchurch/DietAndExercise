@@ -3,6 +3,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DietAndExercise.Data;
 
@@ -108,7 +109,26 @@ public class DataImporter
                     }
                 }
 
-                var date = DateOnly.Parse(Path.GetFileNameWithoutExtension(file));
+                var filename = Path.GetFileNameWithoutExtension(file);
+                DateOnly date;
+                // Try direct parse from filename (e.g. "2023-01-02")
+                if (!DateOnly.TryParse(filename, out date))
+                {
+                    // Look for yyyy-MM-dd anywhere in the filename
+                    var m = Regex.Match(filename, @"\d{4}-\d{2}-\d{2}");
+                    if (m.Success && DateOnly.TryParse(m.Value, out var d2))
+                    {
+                        date = d2;
+                    }
+                    else if (DateTime.TryParse(filename, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+                    {
+                        date = DateOnly.FromDateTime(dt);
+                    }
+                    else
+                    {
+                        throw new FormatException($"Could not parse date from filename '{filename}'");
+                    }
+                }
 
                 // Skip if already exists
                 if (await _db.DayRecords.AnyAsync(d => d.Date == date))
@@ -141,7 +161,7 @@ public class DataImporter
                     ExerciseNotes = string.Join(Environment.NewLine, exercises.Select(kv => $"{kv.Key}: {kv.Value}"))
                 };
 
-                foreach (var f in foods) entity.FoodEntries.Add(new FoodEntry { Note = f });
+                foreach (var f in foods) entity.FoodEntries.Add(new FoodEntry { Category = "Imported", Note = f });
                 foreach (var ex in exercises) entity.ExerciseEntries.Add(new ExerciseEntry { Name = ex.Key, Note = ex.Value });
 
                 if (!dryRun)
@@ -172,7 +192,8 @@ public class DataImporter
             }
             catch (Exception ex)
             {
-                report.Errors.Add((file, ex.Message));
+                var err = ex.ToString();
+                report.Errors.Add((file, err));
                 report.SkippedCount++;
                 report.SkippedFiles.Add((file, $"error: {ex.Message}"));
                 _logger.LogError(ex, "Error importing file {File}", file);

@@ -1,6 +1,7 @@
 ﻿@page "/"
 
 @using DietAndExercise.Models
+@using System.Globalization
 
 @inject DietAndExercise.Services.IDietAndExerciseService DietAndExerciseService
 
@@ -14,10 +15,11 @@
 {
     <p>No records found.</p>
 }
+
 else
 {
     <BitStack Alignment="BitAlignment.Center" Horizontal="true">
-        <div>Max: @max</div><div>Min: @min</div><div>Avg: @average</div>
+        <div>Max: @max.ToString("F1")</div><div>Min: @min.ToString("F1")</div><div>Avg: @average.ToString("F1")</div>
     </BitStack>
     <BitChart Config="_config" @ref="_chart" />
 
@@ -27,42 +29,56 @@ else
             <option value="">-- Select a date --</option>
             @foreach (var record in dayRecords.OrderByDescending(r => r.Date))
             {
-                <option value="@record.Date.ToString()">@record.Date</option>
+                var dateStr = record.Date.ToString("yyyy-MM-dd");
+                <option value="@dateStr">@dateStr</option>
             }
         </select>
 
-        @if (SelectedRecord == null)
-        {
-            <p>No record selected.</p>
-        }
-        else
-        {
-            <BitCard class="responsive-card">
-                <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;">
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Date</strong>
-                        <span>: @SelectedRecord.Date</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>WeightLb</strong>
-                        <span>: @SelectedRecord.WeightLb</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Food</strong>
-                        <span>: @SelectedRecord.FoodIntakeNotes</span>
-                    </div>
-                    <div style="margin-bottom:0.5rem;">
-                        <strong>Exercise</strong>
-                        <span>: @SelectedRecord.ExerciseNotes</span>
-                    </div>
+        <BitCard class="responsive-card">
+            <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;display:flex;flex-direction:column;gap:0.5rem;">
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Date</label>
+                    <input @bind="editModel.Date" style="width:100%;padding:0.5rem;" />
                 </div>
-            </BitCard>
-        }
+
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Weight (lb)</label>
+                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />
+                    <div style="margin-top:0.25rem;color:var(--bit-color-neutralSecondary);font-size:0.9rem;">Current: @editModel.WeightLb.ToString("F1")</div>
+                </div>
+
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Food</label>
+                    <textarea rows="4" @bind="editModel.FoodIntakeNotes" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
+                </div>
+
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Exercise</label>
+                    <textarea rows="4" @bind="editModel.ExerciseNotes" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
+                </div>
+
+                <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;">
+                    <BitButton OnClick="SaveRecord" IsEnabled="@(CanWrite)">Save</BitButton>
+                    <BitButton OnClick="CancelEdit">Cancel</BitButton>
+                    @if (!isNew)
+                    {
+                        <BitButton OnClick="DeleteRecord" IsEnabled="@(CanWrite)">Delete</BitButton>
+                    }
+                </div>
+            </div>
+        </BitCard>
     </div>
 
-    <BitStack Alignment="BitAlignment.Center" Horizontal="true">
+    <BitStack Alignment="BitAlignment.Center" Horizontal="true" Style="margin-bottom:3rem;">
         <BitButton OnClick="ShowWeeklyData">Weekly</BitButton>
     </BitStack>
+
+    @if (!CanWrite)
+    {
+        <div style="max-width:750px;margin:0.5rem auto;padding:0.75rem;border:1px solid #ffd8a6;background:#fff8e1;border-radius:6px;color:#8a6d00;">
+            Edits are disabled because the application is running in markdown mode. To enable create/edit/delete, configure UseDatabase=true and provide a connection string (DIET_DB_CONN or ConnectionStrings:DietAndExercise).
+        </div>
+    }
 }
 
 <style>
@@ -93,29 +109,214 @@ else
     double average;
     private BitChart _chart = default!;
     private BitChartLineConfig _config = default!;
-    string selectedDay = string.Empty;
+    private string _selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
+    string selectedDay
+    {
+        get => _selectedDay;
+        set
+        {
+            if (_selectedDay != value)
+            {
+                _selectedDay = value;
+                OnSelectedDayChanged();
+            }
+        }
+    }
 
     protected override void OnInitialized()
     {
         dayRecords = DietAndExerciseService.GetHistory();
-        if (dayRecords == null || !dayRecords.Any())
+
+        // Default selection is today; if a record exists for today we'll load it, otherwise prepare to create one
+        if (dayRecords == null) dayRecords = Array.Empty<DayRecord>();
+
+        max = dayRecords.Any() ? dayRecords.Max(dr => dr.WeightLb) : 0;
+        min = dayRecords.Any() ? dayRecords.Min(dr => dr.WeightLb) : 0;
+        average = dayRecords.Any() ? Math.Round(dayRecords.Average(dr => dr.WeightLb), 1) : 0;
+
+        InitializeChart(dayRecords);
+
+        // Initialize the editable model for the selected day
+        OnSelectedDayChanged();
+    }
+
+    private DayRecord? SelectedRecord
+    {
+        get
         {
+            if (string.IsNullOrWhiteSpace(selectedDay)) return null;
+            if (DateOnly.TryParse(selectedDay, out var d))
+            {
+                return dayRecords.FirstOrDefault(r => r.Date == d);
+            }
+            return null;
+        }
+    }
+
+    // Editor state
+    private bool showEditor = false; // retained for compatibility with other flows
+    private bool isNew = false;
+    private EditableDay editModel = new EditableDay();
+
+
+    private bool CanWrite => DietAndExerciseService is DietAndExercise.Services.EfDietAndExerciseService;
+
+    private class EditableDay
+    {
+        public string Date { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
+        public double WeightLb { get; set; }
+        public int CaloriesConsumed { get; set; }
+        public int CaloriesBurned { get; set; }
+        public string FoodIntakeNotes { get; set; } = string.Empty;
+        public string ExerciseNotes { get; set; } = string.Empty;
+    }
+
+    private void OnSelectedDayChanged()
+    {
+        if (string.IsNullOrWhiteSpace(selectedDay))
+        {
+            isNew = true;
+            editModel = new EditableDay { Date = DateTime.Now.ToString("yyyy-MM-dd") };
             return;
         }
 
-        max = dayRecords.Max(dr => dr.WeightLb);
-        min = dayRecords.Min(dr => dr.WeightLb);
-        average = Math.Round(dayRecords.Average(dr => dr.WeightLb), 1);
-        
-        InitializeChart(dayRecords);        
+        if (DateOnly.TryParse(selectedDay, out var d))
+        {
+            var rec = dayRecords.FirstOrDefault(r => r.Date == d);
+            if (rec != null)
+            {
+                isNew = false;
+                editModel = new EditableDay
+                {
+                    Date = rec.Date.ToString("yyyy-MM-dd"),
+                    WeightLb = rec.WeightLb,
+                    CaloriesConsumed = rec.CaloriesConsumed,
+                    CaloriesBurned = rec.CaloriesBurned,
+                    FoodIntakeNotes = rec.FoodIntakeNotes,
+                    ExerciseNotes = rec.ExerciseNotes
+                };
+            }
+            else
+            {
+                isNew = true;
+                editModel = new EditableDay
+                {
+                    Date = d.ToString("yyyy-MM-dd"),
+                    WeightLb = 0,
+                    CaloriesConsumed = 0,
+                    CaloriesBurned = 0,
+                    FoodIntakeNotes = string.Empty,
+                    ExerciseNotes = string.Empty
+                };
+            }
+        }
     }
 
-    private DayRecord? SelectedRecord => dayRecords.FirstOrDefault(r => r.Date.ToString().Equals(selectedDay, StringComparison.OrdinalIgnoreCase));
+    private void NewDay()
+    {
+        isNew = true;
+        showEditor = true;
+        editModel = new EditableDay();
+        // ensure edit model date defaults to today for new records
+        editModel.Date = DateTime.Now.ToString("yyyy-MM-dd");
+        if (!CanWrite)
+        {
+            // If edits not supported, show message and don't open editor
+            showEditor = false;
+        }
+    }
+
+    private void EditSelected()
+    {
+        if (SelectedRecord == null) return;
+        if (!CanWrite)
+        {
+            // cannot edit in markdown mode
+            return;
+        }
+        isNew = false;
+        showEditor = true;
+        editModel = new EditableDay
+        {
+            Date = SelectedRecord.Date.ToString("yyyy-MM-dd"),
+            WeightLb = SelectedRecord.WeightLb,
+            CaloriesConsumed = SelectedRecord.CaloriesConsumed,
+            CaloriesBurned = SelectedRecord.CaloriesBurned,
+            FoodIntakeNotes = SelectedRecord.FoodIntakeNotes,
+            ExerciseNotes = SelectedRecord.ExerciseNotes
+        };
+        // ensure selectedDay reflects this record
+        selectedDay = SelectedRecord.Date.ToString("yyyy-MM-dd");
+    }
+
+    private void CancelEdit()
+    {
+        // Reset editable model to the currently selected record (or new template)
+        OnSelectedDayChanged();
+    }
+
+    private void SaveRecord()
+    {
+        // Parse date from editModel
+        if (!DateOnly.TryParse(editModel.Date, out var parsedDate))
+        {
+            if (DateTime.TryParse(editModel.Date, out var dt)) parsedDate = DateOnly.FromDateTime(dt);
+            else parsedDate = DateOnly.FromDateTime(DateTime.Now);
+        }
+        var record = new DayRecord
+        {
+            Date = parsedDate,
+            WeightLb = editModel.WeightLb,
+            CaloriesConsumed = editModel.CaloriesConsumed,
+            CaloriesBurned = editModel.CaloriesBurned,
+            FoodIntakeNotes = editModel.FoodIntakeNotes,
+            ExerciseNotes = editModel.ExerciseNotes
+        };
+
+        if (!CanWrite)
+        {
+            // Guard: do not attempt writes when service is read-only
+            // Show a client-side notification instead (could be improved to use a modal/snackbar)
+            Console.WriteLine("AddOrUpdate not supported in markdown mode");
+            showEditor = false;
+            return;
+        }
+
+        DietAndExerciseService.AddOrUpdateDayRecord(record);
+
+        // Refresh
+        dayRecords = DietAndExerciseService.GetHistory();
+        InitializeChart(dayRecords);
+        selectedDay = editModel.Date.ToString();
+        showEditor = false;
+    }
+
+    private void DeleteRecord()
+    {
+        if (isNew)
+        {
+            // nothing to delete; reset to today's selection
+            selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
+            OnSelectedDayChanged();
+            return;
+        }
+
+        if (DateOnly.TryParse(editModel.Date, out var delDate))
+        {
+            DietAndExerciseService.DeleteDayRecord(delDate);
+        }
+
+        dayRecords = DietAndExerciseService.GetHistory();
+        InitializeChart(dayRecords);
+        // After delete, default to today
+        selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
+        OnSelectedDayChanged();
+    }
 
     private void InitializeChart(IEnumerable<DayRecord> records)
     {
         IEnumerable<string> labels = records.Select(d => d.Date.ToString());
-        IEnumerable<double> data = records.Select(d => d.WeightLb);
+        IEnumerable<double> data = records.Select(d => Math.Round(d.WeightLb, 1));
         _config = new BitChartLineConfig
         {
             Options = new BitChartLineOptions
@@ -186,5 +387,14 @@ else
     {
         dayRecords = dayRecords.Where(d => d.Date.DayOfWeek == DayOfWeek.Monday).ToList();
         InitializeChart(dayRecords);
+    }
+
+    private void OnWeightInput(ChangeEventArgs e)
+    {
+        var s = e?.Value?.ToString() ?? string.Empty;
+        if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+        {
+            editModel.WeightLb = v;
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,14 +16,14 @@ namespace DietAndExercise.Data.Migrations
                 name: "DayRecords",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Date = table.Column<DateTime>(type: "date", nullable: false),
-                    CaloriesConsumed = table.Column<int>(type: "INTEGER", nullable: false),
-                    CaloriesBurned = table.Column<int>(type: "INTEGER", nullable: false),
-                    WeightLb = table.Column<double>(type: "REAL", nullable: false),
-                    FoodIntakeNotes = table.Column<string>(type: "TEXT", nullable: false),
-                    ExerciseNotes = table.Column<string>(type: "TEXT", nullable: false)
+                    CaloriesConsumed = table.Column<int>(type: "integer", nullable: false),
+                    CaloriesBurned = table.Column<int>(type: "integer", nullable: false),
+                    WeightLb = table.Column<double>(type: "double precision", nullable: false),
+                    FoodIntakeNotes = table.Column<string>(type: "text", nullable: false),
+                    ExerciseNotes = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,11 +34,11 @@ namespace DietAndExercise.Data.Migrations
                 name: "ExerciseEntries",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    DayRecordId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    Note = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DayRecordId = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Note = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -54,11 +55,11 @@ namespace DietAndExercise.Data.Migrations
                 name: "FoodEntries",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    DayRecordId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Category = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
-                    Note = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DayRecordId = table.Column<int>(type: "integer", nullable: false),
+                    Category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Note = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false)
                 },
                 constraints: table =>
                 {

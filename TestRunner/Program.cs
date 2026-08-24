@@ -36,7 +36,7 @@ using (var db = new DietAndExerciseDbContext(options))
     svc.AddOrUpdateDayRecord(record);
 
     var fetched = svc.GetByDate(today);
-    Console.WriteLine(fetched is null ? "Fetch failed" : $"Fetched: {fetched.Date} weight={fetched.WeightLb} consumed={fetched.CaloriesConsumed} burned={fetched.CaloriesBurned}");
+    Console.WriteLine(fetched is null ? "Fetch failed" : $"Fetched: {fetched.Date} weight={fetched.WeightLb:F1} consumed={fetched.CaloriesConsumed} burned={fetched.CaloriesBurned}");
 
     Console.WriteLine("Updating calories and notes");
     var updated = fetched with { CaloriesConsumed = 2100, FoodIntakeNotes = "Updated notes" };

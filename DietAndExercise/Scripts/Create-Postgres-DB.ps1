@@ -57,14 +57,36 @@ ALTER DEFAULT PRIVILEGES FOR ROLE $NewUser IN SCHEMA public
         "-f", "-"
     )
 
-    $proc = Start-Process -FilePath "psql" -ArgumentList $psqlArgs -NoNewWindow -RedirectStandardInput "Pipe" -RedirectStandardOutput "Pipe" -RedirectStandardError "Pipe" -PassThru -Wait
-    if ($proc -eq $null) { throw "Failed to start psql process. Ensure psql is installed and on PATH." }
+    # Locate psql on PATH
+    $psqlCmd = Get-Command psql -ErrorAction SilentlyContinue
+    if (-not $psqlCmd) {
+        throw "psql not found. Install the PostgreSQL client tools and ensure 'psql' is on PATH, or run this script from a machine with psql available."
+    }
 
+    # Use System.Diagnostics.Process to run psql and pipe SQL to its stdin
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $psqlCmd.Source
+    $psi.Arguments = $psqlArgs -join ' '
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo = $psi
+
+    if (-not $proc.Start()) {
+        throw "Failed to start psql process. Ensure psql is installed and on PATH."
+    }
+
+    # Write SQL to stdin and close
     $proc.StandardInput.WriteLine($sql)
     $proc.StandardInput.Close()
 
+    # Read output and wait for exit
     $stdout = $proc.StandardOutput.ReadToEnd()
     $stderr = $proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
     $exitCode = $proc.ExitCode
 
     if ($exitCode -ne 0) {

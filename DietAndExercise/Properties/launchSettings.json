@@ -16,7 +16,8 @@
         "launchBrowser": true,
         "applicationUrl": "https://localhost:7298;http://localhost:5223",
         "environmentVariables": {
-          "ASPNETCORE_ENVIRONMENT": "Development"
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "ConnectionStrings__DietAndExercise": "Host=12.10.83.6;Database=diet_and_exercise;Username=diet_and_exercise_user;Password=P05tgr3s!"
         }
       }
     }
