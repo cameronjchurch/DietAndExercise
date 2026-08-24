@@ -39,33 +39,46 @@ else
             <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;display:flex;flex-direction:column;gap:0.5rem;">
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Date</label>
-                    <input @bind="editModel.Date" style="width:100%;padding:0.5rem;" />
+                    <input @bind="editModel.Date" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" />
                 </div>
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Weight (lb)</label>
-                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />                    
+                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />
                 </div>
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Food</label>
-                    <textarea rows="4" @bind="editModel.FoodIntakeNotes" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
+                    <textarea rows="4" @bind="editModel.FoodIntakeNotes" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
                 </div>
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Exercise</label>
-                    <textarea rows="4" @bind="editModel.ExerciseNotes" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
+                    <textarea rows="4" @bind="editModel.ExerciseNotes" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
                 </div>
 
                 <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;">
-                    <BitButton OnClick="SaveRecord" IsEnabled="@(CanWrite)">Save</BitButton>
+                    <button @ref="saveButtonRef" @onclick="SaveRecord" disabled="@(!CanWrite)" class="bit-button">Save</button>
                     @if (!isNew)
                     {
-                        <BitButton OnClick="DeleteRecord" IsEnabled="@(CanWrite)">Delete</BitButton>
+                        <button @onclick="ShowDeleteConfirm" disabled="@(!CanWrite)" class="bit-button bit-button--danger">Delete</button>
                     }
                 </div>
             </div>
         </BitCard>
+        @if (showDeleteConfirm)
+        {
+            <div class="modal-backdrop">
+                <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+                    <h3 id="deleteTitle">Confirm delete</h3>
+                    <p>Are you sure you want to delete the record for @editModel.Date? This action cannot be undone.</p>
+                    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;">
+                        <button @onclick="ConfirmDelete" class="bit-button bit-button--danger" @ref="confirmDeleteRef">Delete</button>
+                        <button @onclick="CancelDelete" class="bit-button">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 
     <BitStack Alignment="BitAlignment.Center" Horizontal="true" Style="margin-bottom:3rem;">
@@ -99,7 +112,37 @@ else
             box-sizing: border-box;
         }
     }
+
+    .bit-button:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(54,162,235,0.25);
+        border-radius: 6px;
+    }
+
+    .bit-button--danger:focus {
+        box-shadow: 0 0 0 4px rgba(220,53,69,0.25);
+    }
+
+    .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-dialog {
+        background: black;
+        padding: 1rem;
+        border-radius: 8px;
+        min-width: 320px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
 </style>
+
+
 
 @code {
     IEnumerable<DayRecord> dayRecords = System.Array.Empty<DayRecord>();
@@ -253,11 +296,19 @@ else
         selectedDay = editModel.Date.ToString();
     }
 
-    private void DeleteRecord()
+    private async Task ShowDeleteConfirm()
+    {
+        showDeleteConfirm = true;
+        StateHasChanged();
+        await Task.Yield();
+        try { await confirmDeleteRef.FocusAsync(); } catch { }
+    }
+
+    private async Task ConfirmDelete()
     {
         if (isNew)
         {
-            // nothing to delete; reset to today's selection
+            showDeleteConfirm = false;
             selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
             OnSelectedDayChanged();
             return;
@@ -273,6 +324,16 @@ else
         // After delete, default to today
         selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
         OnSelectedDayChanged();
+        showDeleteConfirm = false;
+        await Task.Yield();
+        try { await saveButtonRef.FocusAsync(); } catch { }
+    }
+
+    private async Task CancelDelete()
+    {
+        showDeleteConfirm = false;
+        await Task.Yield();
+        try { await saveButtonRef.FocusAsync(); } catch { }
     }
 
     private void InitializeChart(IEnumerable<DayRecord> records)
@@ -357,6 +418,25 @@ else
         if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
         {
             editModel.WeightLb = v;
+        }
+    }
+
+    private ElementReference saveButtonRef;
+    private ElementReference confirmDeleteRef;
+    private bool showDeleteConfirm = false;
+
+    private async Task OnFieldBlur(FocusEventArgs e)
+    {
+        if (!CanWrite)
+            return;
+
+        try
+        {
+            await saveButtonRef.FocusAsync();
+        }
+        catch
+        {
+            // ignore focus failures
         }
     }
 }
