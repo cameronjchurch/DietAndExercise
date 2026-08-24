@@ -1,9 +1,6 @@
-using System;
-using System.IO;
 using Bit.BlazorUI;
 using Microsoft.EntityFrameworkCore;
 using DietAndExercise.Components;
-using DietAndExercise.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
