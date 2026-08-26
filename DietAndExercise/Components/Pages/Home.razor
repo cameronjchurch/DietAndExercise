@@ -39,17 +39,17 @@ else
             <div style="padding:1rem;word-break:break-word;overflow-wrap:break-word;hyphens:auto;display:flex;flex-direction:column;gap:0.5rem;">
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Date</label>
-                    <input @bind="editModel.Date" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" />
+                    <input @bind="editModel.Date" style="width:100%;padding:0.5rem;" />
                 </div>
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Weight (lb)</label>
-                    <input type="number" step="0.1" value="@editModel.WeightLb.ToString("F1")" @oninput="OnWeightInput" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />
+                    <input @bind="editModel.WeightLb" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)" />
                 </div>
 
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.25rem;">Food</label>
-                    <textarea rows="4" @bind="editModel.FoodIntakeNotes" @onblur="OnFieldBlur" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
+                    <textarea rows="4" @bind="editModel.FoodIntakeNotes" style="width:100%;padding:0.5rem;" disabled="@(!CanWrite)"></textarea>
                 </div>
 
                 <div>
@@ -229,7 +229,7 @@ else
                 editModel = new EditableDay
                 {
                     Date = rec.Date.ToString("yyyy-MM-dd"),
-                    WeightLb = rec.WeightLb,
+                    WeightLb = Math.Round(rec.WeightLb, 1),
                     CaloriesConsumed = rec.CaloriesConsumed,
                     CaloriesBurned = rec.CaloriesBurned,
                     FoodIntakeNotes = rec.FoodIntakeNotes,
@@ -410,15 +410,6 @@ else
     {
         dayRecords = dayRecords.Where(d => d.Date.DayOfWeek == DayOfWeek.Monday).ToList();
         InitializeChart(dayRecords);
-    }
-
-    private void OnWeightInput(ChangeEventArgs e)
-    {
-        var s = e?.Value?.ToString() ?? string.Empty;
-        if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
-        {
-            editModel.WeightLb = v;
-        }
     }
 
     private ElementReference saveButtonRef;
