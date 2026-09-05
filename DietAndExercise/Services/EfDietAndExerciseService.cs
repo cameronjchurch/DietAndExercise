@@ -5,14 +5,9 @@ using DietAndExercise.Data.Entities;
 
 namespace DietAndExercise.Services;
 
-public class EfDietAndExerciseService : IDietAndExerciseService
+public class EfDietAndExerciseService(DietAndExerciseDbContext db) : IDietAndExerciseService
 {
-    private readonly DietAndExerciseDbContext _db;
-
-    public EfDietAndExerciseService(DietAndExerciseDbContext db)
-    {
-        _db = db;
-    }
+    private readonly DietAndExerciseDbContext _db = db;
 
     public List<DayRecord> GetHistory()
     {
@@ -23,7 +18,7 @@ public class EfDietAndExerciseService : IDietAndExerciseService
                     .OrderBy(d => d.Date.ToDateTime(TimeOnly.MinValue))
                     .ToList();
 
-        return records.Select(MapEntityToDomain).ToList();
+        return [.. records.Select(MapEntityToDomain)];
     }
 
     public DayRecord? GetByDate(DateOnly date)

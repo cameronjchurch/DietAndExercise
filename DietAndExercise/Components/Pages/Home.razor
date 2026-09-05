@@ -1,7 +1,6 @@
 ﻿@page "/"
 
 @using DietAndExercise.Models
-@using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
 
 @inject DietAndExercise.Services.IDietAndExerciseService DietAndExerciseService
@@ -22,7 +21,8 @@ else
     <BitStack Alignment="BitAlignment.Center" Horizontal="true">
         <div>Max: @max.ToString("F1")</div><div>Min: @min.ToString("F1")</div><div>Avg: @average.ToString("F1")</div>
     </BitStack>
-    <BitChart Config="_config" @ref="_chart" />
+
+    <BitChart Type="BitChartType.Line" Data="_bitChartData" Options="_bitChartOptions" />
 
     <div class="record-list" style="display:flex;flex-direction:column;align-items:center;padding:1rem;">
         <label for="recordSelect" style="font-weight:600;margin-bottom:0.25rem;">Select Date</label>
@@ -142,15 +142,15 @@ else
     }
 </style>
 
-
-
 @code {
     IEnumerable<DayRecord> dayRecords = System.Array.Empty<DayRecord>();
     double max;
     double min;
     double average;
-    private BitChart _chart = default!;
-    private BitChartLineConfig _config = default!;
+
+    BitChartOptions _bitChartOptions = new() { Responsive = true };
+    BitChartData _bitChartData = new();
+
     private string _selectedDay = DateTime.Now.ToString("yyyy-MM-dd");
     string selectedDay
     {
@@ -238,15 +238,16 @@ else
             }
             else
             {
+                var lastRecord = dayRecords.LastOrDefault();
                 isNew = true;
                 editModel = new EditableDay
                 {
                     Date = d.ToString("yyyy-MM-dd"),
-                    WeightLb = 0,
+                    WeightLb = lastRecord?.WeightLb ?? 0,
                     CaloriesConsumed = 0,
                     CaloriesBurned = 0,
-                    FoodIntakeNotes = string.Empty,
-                    ExerciseNotes = string.Empty
+                    FoodIntakeNotes = lastRecord?.FoodIntakeNotes ?? string.Empty,
+                    ExerciseNotes = lastRecord?.ExerciseNotes ?? string.Empty
                 };
             }
         }
@@ -340,70 +341,18 @@ else
     {
         IEnumerable<string> labels = records.Select(d => d.Date.ToString());
         IEnumerable<double> data = records.Select(d => Math.Round(d.WeightLb, 1));
-        _config = new BitChartLineConfig
+        _bitChartData.Labels = labels.ToList();
+        _bitChartData.Datasets = new List<BitChartDataset>
         {
-            Options = new BitChartLineOptions
+            new BitChartDataset
             {
-                Responsive = true,
-                Title = new BitChartOptionsTitle
-                {
-                    Display = true,
-                    Text = "Weight vs Time"
-                },
-                Tooltips = new BitChartTooltips
-                {
-                    Mode = BitChartInteractionMode.Nearest,
-                    Intersect = true
-                },
-                Hover = new BitChartHover
-                {
-                    Mode = BitChartInteractionMode.Nearest,
-                    Intersect = true
-                },
-                Scales = new BitChartScales
-                {
-                    XAxes =
-            [
-                new BitChartCategoryAxis
-                        {
-                            ScaleLabel = new BitChartScaleLabel
-                            {
-                                LabelString = "Day"
-                            },
-                            GridLines = new BitChartGridLines
-                            {
-                                Color = "gray"
-                            }
-                        }
-            ],
-                    YAxes =
-            [
-                new BitChartLinearCartesianAxis
-                        {
-                            ScaleLabel = new BitChartScaleLabel
-                            {
-                                LabelString = "Weight (Lbs)"
-                            },
-                            GridLines = new BitChartGridLines
-                            {
-                                Color = "gray"
-                            }
-                        }
-            ]
-                }
+                Label = "Weight (Lbs)",
+                BackgroundColor = "#36A2EB",
+                BorderColor = "#36A2EB",
+                Fill = BitChartFillMode.None,
+                Data = data.Select(d => d as double?).ToList()
             }
         };
-
-        IDataset<double> dataset = new BitChartLineDataset<double>(data)
-        {
-            Label = "Me",
-            BackgroundColor = BitChartColorUtil.FromDrawingColor(System.Drawing.Color.FromArgb(54, 162, 235)),
-            BorderColor = BitChartColorUtil.FromDrawingColor(System.Drawing.Color.FromArgb(54, 162, 235)),
-            Fill = BitChartFillingMode.Disabled
-        };
-
-        _config.Data.Labels.AddRange(labels);
-        _config.Data.Datasets.Add(dataset);
     }
 
     private void ShowWeeklyData()
