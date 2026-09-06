@@ -243,7 +243,7 @@ else
                 editModel = new EditableDay
                 {
                     Date = d.ToString("yyyy-MM-dd"),
-                    WeightLb = lastRecord?.WeightLb ?? 0,
+                    WeightLb = Math.Round(lastRecord?.WeightLb ?? 0, 1),
                     CaloriesConsumed = 0,
                     CaloriesBurned = 0,
                     FoodIntakeNotes = lastRecord?.FoodIntakeNotes ?? string.Empty,
